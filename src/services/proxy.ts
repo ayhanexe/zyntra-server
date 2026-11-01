@@ -26,7 +26,7 @@ export async function handleStreamProxy(
     'Accept-Encoding': 'identity', // Ensure no unwanted compression on raw media
   };
 
-  if (referer) {
+  if (referer && !url.includes('googlevideo.com')) {
     forwardHeaders.Referer = referer;
   }
 

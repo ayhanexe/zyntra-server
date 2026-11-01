@@ -88,15 +88,19 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
 
   for (const client of CLIENTS) {
     try {
+      const reqHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': client.userAgent,
+      };
+      if (client.name !== 'ANDROID' && client.name !== 'IOS') {
+        reqHeaders['X-YouTube-Client-Name'] = String(client.id);
+        reqHeaders['X-YouTube-Client-Version'] = client.version;
+        reqHeaders['Origin'] = 'https://www.youtube.com';
+      }
+
       const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': client.userAgent,
-          'X-YouTube-Client-Name': String(client.id),
-          'X-YouTube-Client-Version': client.version,
-          Origin: 'https://www.youtube.com',
-        },
+        headers: reqHeaders,
         body: JSON.stringify({
           context: client.context,
           videoId,
@@ -162,7 +166,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
           proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
           headers: {
             'User-Agent': client.userAgent,
-            Referer: 'https://www.youtube.com/',
           },
         });
       }
@@ -199,7 +202,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
           proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
           headers: {
             'User-Agent': client.userAgent,
-            Referer: 'https://www.youtube.com/',
           },
         });
       }
@@ -237,7 +239,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
           proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
           headers: {
             'User-Agent': client.userAgent,
-            Referer: 'https://www.youtube.com/',
           },
         });
       }
