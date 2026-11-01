@@ -7,10 +7,10 @@ WORKDIR /app
 RUN npm install -g pnpm
 
 # Copy package manifests and configs
-COPY package.json pnpm-lock.yaml* tsconfig.json ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* tsconfig.json ./
 
-# Install dependencies (including devDependencies for building)
-RUN pnpm install --frozen-lockfile || pnpm install
+# Install dependencies (ignoring native build scripts in build step)
+RUN pnpm install --ignore-scripts
 
 # Copy source code
 COPY src ./src
@@ -39,10 +39,10 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 
 # Copy package manifests
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
 
 # Install production dependencies only
-RUN pnpm install --prod --frozen-lockfile || pnpm install --prod
+RUN pnpm install --prod --ignore-scripts
 
 # Copy built code from builder
 COPY --from=builder /app/dist ./dist
