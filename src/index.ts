@@ -44,6 +44,29 @@ server.get('/health', async () => {
   };
 });
 
+server.get('/debug', async (req: any) => {
+  const videoId = req.query?.id || 'tHLoP7luagw';
+  const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip',
+    },
+    body: JSON.stringify({
+      context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38', androidSdkVersion: 30, osName: 'Android', osVersion: '11' } },
+      videoId,
+    }),
+  });
+  const data: any = await res.json();
+  return {
+    status: res.status,
+    playability: data.playabilityStatus,
+    formatsCount: data.streamingData?.formats?.length,
+    adaptiveCount: data.streamingData?.adaptiveFormats?.length,
+    firstFormatUrl: data.streamingData?.formats?.[0]?.url?.substring(0, 50),
+  };
+});
+
 // 2. Resolve / Extract endpoint (POST & GET)
 const handleResolve = async (req: any, reply: any) => {
   const url = (req.body?.url || req.query?.url) as string;
