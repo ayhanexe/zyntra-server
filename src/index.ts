@@ -60,7 +60,16 @@ const handleResolve = async (req: any, reply: any) => {
     // 1. YouTube
     if (extractYouTubeId(url)) {
       server.log.info({ url }, 'Resolving via YouTube Innertube Engine');
-      result = await resolveYouTubeMedia(url, hostBaseUrl);
+      try {
+        result = await resolveYouTubeMedia(url, hostBaseUrl);
+      } catch (innertubeErr: any) {
+        server.log.warn({ err: innertubeErr?.message }, 'Innertube resolution failed, falling back to yt-dlp');
+        if (await checkYtDlpAvailable()) {
+          result = await resolveWithYtDlp(url, hostBaseUrl);
+        } else {
+          throw innertubeErr;
+        }
+      }
     }
     // 2. TikTok
     else if (isTikTokUrl(url)) {

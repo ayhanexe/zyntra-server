@@ -30,6 +30,7 @@ export async function resolveWithYtDlp(url: string, hostBaseUrl: string): Promis
       '--no-warnings',
       '--no-playlist',
       '--format', 'bestvideo+bestaudio/best',
+      '--extractor-args', 'youtube:player_client=ios,web,android',
       url,
     ];
 
