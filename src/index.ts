@@ -67,6 +67,51 @@ server.get('/debug', async (req: any) => {
   };
 });
 
+server.get('/api/test-ytdlp', async (req: any) => {
+  const videoId = req.query?.id || 'ufz85DcaIro';
+  const { spawn } = await import('child_process');
+  return new Promise((resolve) => {
+    const proc = spawn('yt-dlp', [
+      '--dump-single-json',
+      '--no-warnings',
+      '--no-playlist',
+      `https://www.youtube.com/watch?v=${videoId}`,
+    ]);
+    let out = '';
+    let err = '';
+    proc.stdout.on('data', d => out += d.toString());
+    proc.stderr.on('data', d => err += d.toString());
+    proc.on('close', code => {
+      resolve({ code, err, outLen: out.length, title: (() => { try { return JSON.parse(out).title; } catch { return null; } })() });
+    });
+  });
+});
+
+server.get('/api/test-dl', async (req: any) => {
+  const format = req.query?.format || '18';
+  const videoId = req.query?.id || 'ufz85DcaIro';
+  const { spawn } = await import('child_process');
+  return new Promise((resolve) => {
+    const proc = spawn('yt-dlp', [
+      '-f', format,
+      '-o', '-',
+      `https://www.youtube.com/watch?v=${videoId}`,
+    ]);
+    let bytes = 0;
+    let err = '';
+    proc.stdout.on('data', d => {
+      bytes += d.length;
+      if (bytes > 500000) {
+        proc.kill();
+      }
+    });
+    proc.stderr.on('data', d => err += d.toString());
+    proc.on('close', code => {
+      resolve({ code, bytes, err });
+    });
+  });
+});
+
 // 2. Resolve / Extract endpoint (POST & GET)
 const handleResolve = async (req: any, reply: any) => {
   const url = (req.body?.url || req.query?.url) as string;
