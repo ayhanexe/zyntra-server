@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { Readable } from 'stream';
+import { handleMp3Conversion } from './mp3.js';
 
 export interface StreamProxyOptions {
   url: string;
@@ -7,6 +8,8 @@ export interface StreamProxyOptions {
   referer?: string;
   filename?: string;
   asAttachment?: boolean;
+  format?: string;
+  bitrate?: string;
 }
 
 export async function handleStreamProxy(
@@ -14,7 +17,17 @@ export async function handleStreamProxy(
   reply: FastifyReply,
   options: StreamProxyOptions
 ) {
-  const { url, userAgent, referer, filename, asAttachment } = options;
+  const { url, userAgent, referer, filename, asAttachment, format, bitrate } = options;
+
+  if (format === 'mp3') {
+    return handleMp3Conversion(req, reply, {
+      url,
+      userAgent,
+      referer,
+      filename,
+      bitrate,
+    });
+  }
 
   if (!url || !/^https?:\/\//i.test(url)) {
     return reply.status(400).send({ error: 'Valid URL parameter is required' });

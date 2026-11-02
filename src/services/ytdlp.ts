@@ -105,6 +105,29 @@ export async function resolveWithYtDlp(url: string, hostBaseUrl: string): Promis
           }
         }
 
+        // Add MP3 conversion option if audio streams exist
+        if (audioFormats.length > 0) {
+          const bestAudio = audioFormats[0];
+          const durationSec = json.duration ? parseInt(json.duration, 10) : undefined;
+          const estimatedMp3Size = durationSec ? Math.round(((192 * 1000) / 8) * durationSec) : undefined;
+          const mp3Params = new URLSearchParams({
+            url: bestAudio.url,
+            filename: `${title}.mp3`,
+            format: 'mp3',
+          });
+
+          audioFormats.unshift({
+            formatId: 'mp3',
+            label: 'Audio MP3 (192kbps)',
+            ext: 'mp3',
+            bitrate: 192,
+            filesize: estimatedMp3Size,
+            url: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
+            proxyUrl: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
+            headers: bestAudio.headers,
+          });
+        }
+
         resolve({
           id: String(json.id || Date.now()),
           title,

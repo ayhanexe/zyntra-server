@@ -174,6 +174,34 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
       const bestM4aAudio = adaptiveAudios.find((a: any) => a.itag === 140) || adaptiveAudios[0];
       const bestWebmAudio = adaptiveAudios.find((a: any) => a.itag === 251) || adaptiveAudios[0];
 
+      // Add high-quality MP3 conversion option
+      const bestAudioForMp3 = bestM4aAudio || bestWebmAudio;
+      if (bestAudioForMp3) {
+        const durationSec = vd.lengthSeconds ? parseInt(vd.lengthSeconds, 10) : undefined;
+        const estimatedMp3Size = durationSec ? Math.round(((192 * 1000) / 8) * durationSec) : undefined;
+
+        const mp3Params = new URLSearchParams({
+          url: bestAudioForMp3.url,
+          ua: client.userAgent,
+          referer: `https://www.youtube.com/watch?v=${videoId}`,
+          filename: `${vd.title || 'audio'}.mp3`,
+          format: 'mp3',
+        });
+
+        audioStreams.unshift({
+          formatId: 'mp3',
+          label: 'Audio MP3 (192kbps)',
+          ext: 'mp3',
+          bitrate: 192,
+          filesize: estimatedMp3Size,
+          url: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
+          proxyUrl: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
+          headers: {
+            'User-Agent': client.userAgent,
+          },
+        });
+      }
+
       // Build Video formats
       const videoFormats: FormatOption[] = [];
 

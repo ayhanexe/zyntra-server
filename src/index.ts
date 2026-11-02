@@ -7,6 +7,7 @@ import { resolveTikTokMedia, isTikTokUrl } from './services/tiktok.js';
 import { resolveInstagramMedia, isInstagramUrl } from './services/instagram.js';
 import { resolveWithYtDlp, checkYtDlpAvailable } from './services/ytdlp.js';
 import { handleStreamProxy } from './services/proxy.js';
+import { handleMp3Conversion, checkFfmpegAvailable } from './services/mp3.js';
 import { MediaResolutionResult } from './types/index.js';
 
 const server = Fastify({
@@ -32,14 +33,16 @@ function getBaseUrl(req: any): string {
 // 1. Healthcheck for Railway & monitoring
 server.get('/health', async () => {
   const hasYtDlp = await checkYtDlpAvailable();
+  const hasFfmpeg = await checkFfmpegAvailable();
   return {
     status: 'ok',
     service: 'zyntra-server',
-    version: '1.0.0',
+    version: '1.1.0',
     timestamp: new Date().toISOString(),
     engines: {
       innertube: 'active',
       ytdlp: hasYtDlp ? 'available' : 'unavailable',
+      ffmpeg: hasFfmpeg ? 'available' : 'unavailable',
     },
   };
 });
@@ -182,6 +185,8 @@ server.get('/api/stream', async (req, reply) => {
   const userAgent = query.ua;
   const referer = query.referer;
   const filename = query.filename;
+  const format = query.format;
+  const bitrate = query.bitrate;
 
   return handleStreamProxy(req, reply, {
     url: targetUrl,
@@ -189,6 +194,8 @@ server.get('/api/stream', async (req, reply) => {
     referer,
     filename,
     asAttachment: false,
+    format,
+    bitrate,
   });
 });
 
@@ -199,6 +206,8 @@ server.get('/api/download', async (req, reply) => {
   const userAgent = query.ua;
   const referer = query.referer;
   const filename = query.filename;
+  const format = query.format;
+  const bitrate = query.bitrate;
 
   return handleStreamProxy(req, reply, {
     url: targetUrl,
@@ -206,8 +215,33 @@ server.get('/api/download', async (req, reply) => {
     referer,
     filename,
     asAttachment: true,
+    format,
+    bitrate,
   });
 });
+
+// 5. Dedicated MP3 Conversion & Download endpoint
+const handleMp3Route = async (req: any, reply: any) => {
+  const query = req.query as Record<string, string>;
+  const targetUrl = query.url || req.body?.url;
+  const userAgent = query.ua || req.body?.ua;
+  const referer = query.referer || req.body?.referer;
+  const filename = query.filename || req.body?.filename;
+  const bitrate = query.bitrate || req.body?.bitrate || '192k';
+
+  return handleMp3Conversion(req, reply, {
+    url: targetUrl,
+    userAgent,
+    referer,
+    filename,
+    bitrate,
+  });
+};
+
+server.get('/api/mp3', handleMp3Route);
+server.post('/api/mp3', handleMp3Route);
+server.get('/api/download/mp3', handleMp3Route);
+server.post('/api/download/mp3', handleMp3Route);
 
 // Start the server
 const start = async () => {

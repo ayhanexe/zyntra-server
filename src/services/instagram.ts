@@ -1,4 +1,4 @@
-import { MediaResolutionResult, FormatOption } from '../types/index.js';
+import { MediaResolutionResult, FormatOption, AudioOption } from '../types/index.js';
 
 export function isInstagramUrl(url: string): boolean {
   return /(instagram\.com|instagr\.am)/i.test(url);
@@ -64,13 +64,35 @@ export async function resolveInstagramMedia(url: string, hostBaseUrl: string): P
     },
   ];
 
+  const mp3Params = new URLSearchParams({
+    url: rawVideoUrl,
+    referer: 'https://www.instagram.com/',
+    filename: `${title}.mp3`,
+    format: 'mp3',
+  });
+
+  const audioFormats: AudioOption[] = [
+    {
+      formatId: 'mp3',
+      label: 'Audio MP3 (192kbps)',
+      ext: 'mp3',
+      bitrate: 192,
+      url: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
+      proxyUrl: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
+      headers: {
+        Referer: 'https://www.instagram.com/',
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)',
+      },
+    },
+  ];
+
   return {
     id: shortcode,
     title,
     thumbnail,
     platform: 'instagram',
     formats,
-    audioFormats: [],
+    audioFormats,
     originalUrl: `https://www.instagram.com/p/${shortcode}/`,
     extractedAt: Date.now(),
   };
