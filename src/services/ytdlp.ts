@@ -65,10 +65,6 @@ export async function resolveWithYtDlp(url: string, hostBaseUrl: string): Promis
 
           if (isAudioOnly) {
             const ext = f.ext || 'm4a';
-            const proxyParams = new URLSearchParams({
-              url: f.url,
-              filename: `${title}.${ext}`,
-            });
 
             audioFormats.push({
               formatId: String(f.format_id),
@@ -77,16 +73,11 @@ export async function resolveWithYtDlp(url: string, hostBaseUrl: string): Promis
               bitrate: f.abr,
               filesize: f.filesize || f.filesize_approx,
               url: f.url,
-              proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
               headers: f.http_headers,
             });
           } else if (isVideo) {
             const ext = f.ext || 'mp4';
             const height = f.height || 0;
-            const proxyParams = new URLSearchParams({
-              url: f.url,
-              filename: `${title} [${height}p].${ext}`,
-            });
 
             formats.push({
               formatId: String(f.format_id),
@@ -99,33 +90,9 @@ export async function resolveWithYtDlp(url: string, hostBaseUrl: string): Promis
               filesize: f.filesize || f.filesize_approx,
               isMuxed: f.acodec !== 'none',
               videoUrl: f.url,
-              proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
               headers: f.http_headers,
             });
           }
-        }
-
-        // Add MP3 conversion option if audio streams exist
-        if (audioFormats.length > 0) {
-          const bestAudio = audioFormats[0];
-          const durationSec = json.duration ? parseInt(json.duration, 10) : undefined;
-          const estimatedMp3Size = durationSec ? Math.round(((192 * 1000) / 8) * durationSec) : undefined;
-          const mp3Params = new URLSearchParams({
-            url: bestAudio.url,
-            filename: `${title}.mp3`,
-            format: 'mp3',
-          });
-
-          audioFormats.unshift({
-            formatId: 'mp3',
-            label: 'Audio MP3 (192kbps)',
-            ext: 'mp3',
-            bitrate: 192,
-            filesize: estimatedMp3Size,
-            url: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
-            proxyUrl: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
-            headers: bestAudio.headers,
-          });
         }
 
         resolve({

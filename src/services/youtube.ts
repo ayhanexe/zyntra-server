@@ -1,3 +1,4 @@
+import { Innertube } from 'youtubei.js';
 import { FormatOption, AudioOption, MediaResolutionResult } from '../types/index.js';
 
 interface InnertubeClient {
@@ -6,6 +7,23 @@ interface InnertubeClient {
   version: string;
   userAgent: string;
   context: Record<string, any>;
+}
+
+let cachedVisitorData: string | null = null;
+let lastVisitorDataTime = 0;
+
+async function getVisitorData(): Promise<string | undefined> {
+  if (cachedVisitorData && Date.now() - lastVisitorDataTime < 1800000) {
+    return cachedVisitorData;
+  }
+  try {
+    const yt = await Innertube.create();
+    cachedVisitorData = yt.session.context.client.visitorData || null;
+    lastVisitorDataTime = Date.now();
+    return cachedVisitorData || undefined;
+  } catch {
+    return cachedVisitorData || undefined;
+  }
 }
 
 const CLIENTS: InnertubeClient[] = [
@@ -21,6 +39,25 @@ const CLIENTS: InnertubeClient[] = [
         androidSdkVersion: 30,
         osName: 'Android',
         osVersion: '11',
+        hl: 'en',
+        gl: 'US',
+      },
+    },
+  },
+  {
+    name: 'ANDROID_VR',
+    id: 28,
+    version: '1.71.26',
+    userAgent: 'com.google.android.apps.youtube.vr.oculus/1.71.26 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip',
+    context: {
+      client: {
+        clientName: 'ANDROID_VR',
+        clientVersion: '1.71.26',
+        deviceMake: 'Oculus',
+        deviceModel: 'Quest 3',
+        androidSdkVersion: 32,
+        osName: 'Android',
+        osVersion: '12L',
         hl: 'en',
         gl: 'US',
       },
@@ -44,20 +81,11 @@ const CLIENTS: InnertubeClient[] = [
       },
     },
   },
-  {
-    name: 'TVHTML5_SIMPLY_EMBEDDED',
-    id: 85,
-    version: '2.0',
-    userAgent: 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36',
-    context: {
-      client: {
-        clientName: 'TVHTML5_SIMPLY_EMBEDDED',
-        clientVersion: '2.0',
-        hl: 'en',
-        gl: 'US',
-      },
-    },
-  },
+];
+
+const ENDPOINTS = [
+  'https://youtubei.googleapis.com/youtubei/v1/player',
+  'https://www.youtube.com/youtubei/v1/player?prettyPrint=false',
 ];
 
 export function extractYouTubeId(url: string): string | null {
@@ -86,29 +114,34 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
 
   let lastError: any = null;
   const attempts: string[] = [];
+  const visitorData = await getVisitorData();
 
   for (const client of CLIENTS) {
-    try {
-      const reqHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'User-Agent': client.userAgent,
-      };
-      if (client.name !== 'ANDROID' && client.name !== 'IOS') {
-        reqHeaders['X-YouTube-Client-Name'] = String(client.id);
-        reqHeaders['X-YouTube-Client-Version'] = client.version;
-        reqHeaders['Origin'] = 'https://www.youtube.com';
-      }
+    for (const endpoint of ENDPOINTS) {
+      try {
+        const reqHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'User-Agent': client.userAgent,
+          'X-YouTube-Client-Name': String(client.id),
+          'X-YouTube-Client-Version': client.version,
+        };
 
-      const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
-        method: 'POST',
-        headers: reqHeaders,
-        body: JSON.stringify({
-          context: client.context,
-          videoId,
-          contentCheckOk: true,
-          racyCheckOk: true,
-        }),
-      });
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: reqHeaders,
+          body: JSON.stringify({
+            context: {
+              ...client.context,
+              client: {
+                ...client.context.client,
+                ...(visitorData ? { visitorData } : {}),
+              },
+            },
+            videoId,
+            contentCheckOk: true,
+            racyCheckOk: true,
+          }),
+        });
 
       if (!res.ok) {
         const text = await res.text().catch(() => '');
@@ -256,9 +289,10 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
         originalUrl: `https://www.youtube.com/watch?v=${videoId}`,
         extractedAt: Date.now(),
       };
-    } catch (e: any) {
-      attempts.push(`${client.name} exception: ${e?.message || 'unknown'}`);
-      lastError = e;
+      } catch (e: any) {
+        attempts.push(`${client.name} exception: ${e?.message || 'unknown'}`);
+        lastError = e;
+      }
     }
   }
 
