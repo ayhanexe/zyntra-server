@@ -85,6 +85,7 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
   }
 
   let lastError: any = null;
+  const attempts: string[] = [];
 
   for (const client of CLIENTS) {
     try {
@@ -110,6 +111,8 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
       });
 
       if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        attempts.push(`${client.name}: HTTP ${res.status} (${text.slice(0, 80)})`);
         lastError = new Error(`YouTube API HTTP error: ${res.status}`);
         continue;
       }
@@ -117,12 +120,14 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
       const json: any = await res.json();
       const status = json?.playabilityStatus?.status;
       if (status && status !== 'OK') {
+        attempts.push(`${client.name}: playability=${status} (${json?.playabilityStatus?.reason || ''})`);
         lastError = new Error(json.playabilityStatus.reason || `Video unplayable: ${status}`);
         continue;
       }
 
       const sd = json.streamingData;
       if (!sd) {
+        attempts.push(`${client.name}: no streamingData`);
         lastError = new Error('No streaming data found');
         continue;
       }
@@ -136,6 +141,7 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
       const adaptiveList = rawAdaptive.filter((f: any) => typeof f.url === 'string');
 
       if (progressiveList.length === 0 && adaptiveList.length === 0) {
+        attempts.push(`${client.name}: 0 direct URLs (formats=${rawFormats.length}, adaptive=${rawAdaptive.length})`);
         lastError = new Error('All formats lack direct stream URLs (cipher required)');
         continue;
       }
@@ -251,9 +257,10 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
         extractedAt: Date.now(),
       };
     } catch (e: any) {
+      attempts.push(`${client.name} exception: ${e?.message || 'unknown'}`);
       lastError = e;
     }
   }
 
-  throw new Error(`Failed to resolve YouTube video: ${lastError?.message || 'Unknown error'}`);
+  throw new Error(`Failed to resolve YouTube video: ${attempts.join(' | ') || lastError?.message || 'Unknown error'}`);
 }

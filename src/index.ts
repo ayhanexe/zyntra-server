@@ -135,7 +135,12 @@ const handleResolve = async (req: any, reply: any) => {
       } catch (innertubeErr: any) {
         server.log.warn({ err: innertubeErr?.message }, 'Innertube resolution failed, falling back to yt-dlp');
         if (await checkYtDlpAvailable()) {
-          result = await resolveWithYtDlp(url, hostBaseUrl);
+          try {
+            result = await resolveWithYtDlp(url, hostBaseUrl);
+          } catch (ytdlpErr: any) {
+            server.log.error({ ytdlpErr: ytdlpErr?.message }, 'yt-dlp fallback also failed');
+            throw innertubeErr;
+          }
         } else {
           throw innertubeErr;
         }
