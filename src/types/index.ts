@@ -18,7 +18,7 @@ export interface FormatOption {
   isMuxed: boolean;
   videoUrl: string;
   audioUrl?: string;
-  proxyUrl: string;
+  proxyUrl?: string;
   headers?: Record<string, string>;
 }
 
@@ -29,7 +29,7 @@ export interface AudioOption {
   bitrate?: number;
   filesize?: number;
   url: string;
-  proxyUrl: string;
+  proxyUrl?: string;
   headers?: Record<string, string>;
 }
 

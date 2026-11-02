@@ -78,7 +78,7 @@ export function extractYouTubeId(url: string): string | null {
   return null;
 }
 
-export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string): Promise<MediaResolutionResult> {
+export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string): Promise<MediaResolutionResult> {
   const videoId = extractYouTubeId(urlOrId);
   if (!videoId) {
     throw new Error('Invalid YouTube URL or Video ID');
@@ -149,13 +149,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
         const bitrate = a.bitrate ? Math.round(a.bitrate / 1000) : undefined;
         const label = `${bitrate ? `${bitrate}kbps` : 'HD'} (${ext.toUpperCase()})`;
 
-        const proxyParams = new URLSearchParams({
-          url: a.url,
-          ua: client.userAgent,
-          referer: `https://www.youtube.com/watch?v=${videoId}`,
-          filename: `${vd.title || 'audio'}.${ext}`,
-        });
-
         audioStreams.push({
           formatId: String(a.itag),
           label,
@@ -163,7 +156,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
           bitrate,
           filesize: a.contentLength ? parseInt(a.contentLength, 10) : undefined,
           url: a.url,
-          proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
           headers: {
             'User-Agent': client.userAgent,
           },
@@ -174,34 +166,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
       const bestM4aAudio = adaptiveAudios.find((a: any) => a.itag === 140) || adaptiveAudios[0];
       const bestWebmAudio = adaptiveAudios.find((a: any) => a.itag === 251) || adaptiveAudios[0];
 
-      // Add high-quality MP3 conversion option
-      const bestAudioForMp3 = bestM4aAudio || bestWebmAudio;
-      if (bestAudioForMp3) {
-        const durationSec = vd.lengthSeconds ? parseInt(vd.lengthSeconds, 10) : undefined;
-        const estimatedMp3Size = durationSec ? Math.round(((192 * 1000) / 8) * durationSec) : undefined;
-
-        const mp3Params = new URLSearchParams({
-          url: bestAudioForMp3.url,
-          ua: client.userAgent,
-          referer: `https://www.youtube.com/watch?v=${videoId}`,
-          filename: `${vd.title || 'audio'}.mp3`,
-          format: 'mp3',
-        });
-
-        audioStreams.unshift({
-          formatId: 'mp3',
-          label: 'Audio MP3 (192kbps)',
-          ext: 'mp3',
-          bitrate: 192,
-          filesize: estimatedMp3Size,
-          url: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
-          proxyUrl: `${hostBaseUrl}/api/mp3?${mp3Params.toString()}`,
-          headers: {
-            'User-Agent': client.userAgent,
-          },
-        });
-      }
-
       // Build Video formats
       const videoFormats: FormatOption[] = [];
 
@@ -209,12 +173,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
       for (const p of progressiveList) {
         const height = p.height || (p.qualityLabel ? parseInt(p.qualityLabel, 10) : 360);
         const ext = String(p.mimeType).includes('webm') ? 'webm' : 'mp4';
-        const proxyParams = new URLSearchParams({
-          url: p.url,
-          ua: client.userAgent,
-          referer: `https://www.youtube.com/watch?v=${videoId}`,
-          filename: `${vd.title || 'video'} [${height}p].${ext}`,
-        });
 
         videoFormats.push({
           formatId: String(p.itag),
@@ -227,7 +185,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
           filesize: p.contentLength ? parseInt(p.contentLength, 10) : undefined,
           isMuxed: true,
           videoUrl: p.url,
-          proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
           headers: {
             'User-Agent': client.userAgent,
           },
@@ -241,13 +198,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
         const isWebm = String(v.mimeType).includes('webm');
         const ext = isWebm ? 'webm' : 'mp4';
         const partnerAudio = isWebm ? bestWebmAudio : bestM4aAudio;
-
-        const proxyParams = new URLSearchParams({
-          url: v.url,
-          ua: client.userAgent,
-          referer: `https://www.youtube.com/watch?v=${videoId}`,
-          filename: `${vd.title || 'video'} [${v.qualityLabel || `${height}p`}].${ext}`,
-        });
 
         const videoSize = v.contentLength ? parseInt(v.contentLength, 10) : 0;
         const audioSize = partnerAudio?.contentLength ? parseInt(partnerAudio.contentLength, 10) : 0;
@@ -264,7 +214,6 @@ export async function resolveYouTubeMedia(urlOrId: string, hostBaseUrl: string):
           isMuxed: false,
           videoUrl: v.url,
           audioUrl: partnerAudio?.url,
-          proxyUrl: `${hostBaseUrl}/api/stream?${proxyParams.toString()}`,
           headers: {
             'User-Agent': client.userAgent,
           },

@@ -6,8 +6,7 @@ import { resolveYouTubeMedia, extractYouTubeId } from './services/youtube.js';
 import { resolveTikTokMedia, isTikTokUrl } from './services/tiktok.js';
 import { resolveInstagramMedia, isInstagramUrl } from './services/instagram.js';
 import { resolveWithYtDlp, checkYtDlpAvailable } from './services/ytdlp.js';
-import { handleStreamProxy } from './services/proxy.js';
-import { handleMp3Conversion, checkFfmpegAvailable } from './services/mp3.js';
+import { checkFfmpegAvailable } from './services/mp3.js';
 import { MediaResolutionResult } from './types/index.js';
 
 const server = Fastify({
@@ -178,63 +177,39 @@ server.get('/api/resolve', handleResolve);
 server.post('/api/extract', handleResolve);
 server.get('/api/extract', handleResolve);
 
-// 3. Stream proxy endpoint (Guaranteed playback & Range support)
-server.get('/api/stream', async (req, reply) => {
+// 3. Stream proxy endpoint (Deprecated - redirects or returns 410)
+server.get('/api/stream', async (req: any, reply: any) => {
   const query = req.query as Record<string, string>;
-  const targetUrl = query.url;
-  const userAgent = query.ua;
-  const referer = query.referer;
-  const filename = query.filename;
-  const format = query.format;
-  const bitrate = query.bitrate;
-
-  return handleStreamProxy(req, reply, {
-    url: targetUrl,
-    userAgent,
-    referer,
-    filename,
-    asAttachment: false,
-    format,
-    bitrate,
+  const targetUrl = query?.url;
+  if (targetUrl) {
+    return reply.redirect(targetUrl, 302);
+  }
+  return reply.status(410).send({
+    error: 'Stream chunk proxying is disabled to prevent datacenter IP rate limits. Use direct stream URLs from /api/resolve.',
   });
 });
 
-// 4. Download proxy endpoint (Forces Content-Disposition: attachment)
-server.get('/api/download', async (req, reply) => {
+// 4. Download proxy endpoint (Deprecated - redirects or returns 410)
+server.get('/api/download', async (req: any, reply: any) => {
   const query = req.query as Record<string, string>;
-  const targetUrl = query.url;
-  const userAgent = query.ua;
-  const referer = query.referer;
-  const filename = query.filename;
-  const format = query.format;
-  const bitrate = query.bitrate;
-
-  return handleStreamProxy(req, reply, {
-    url: targetUrl,
-    userAgent,
-    referer,
-    filename,
-    asAttachment: true,
-    format,
-    bitrate,
+  const targetUrl = query?.url;
+  if (targetUrl) {
+    return reply.redirect(targetUrl, 302);
+  }
+  return reply.status(410).send({
+    error: 'Download proxying is disabled to prevent datacenter IP rate limits. Use direct stream URLs from /api/resolve.',
   });
 });
 
-// 5. Dedicated MP3 Conversion & Download endpoint
+// 5. Dedicated MP3 Conversion & Download endpoint (Deprecated - redirects or returns 410)
 const handleMp3Route = async (req: any, reply: any) => {
   const query = req.query as Record<string, string>;
-  const targetUrl = query.url || req.body?.url;
-  const userAgent = query.ua || req.body?.ua;
-  const referer = query.referer || req.body?.referer;
-  const filename = query.filename || req.body?.filename;
-  const bitrate = query.bitrate || req.body?.bitrate || '192k';
-
-  return handleMp3Conversion(req, reply, {
-    url: targetUrl,
-    userAgent,
-    referer,
-    filename,
-    bitrate,
+  const targetUrl = query?.url || req.body?.url;
+  if (targetUrl) {
+    return reply.redirect(targetUrl, 302);
+  }
+  return reply.status(410).send({
+    error: 'Server-side MP3 transcode proxying is disabled. Use direct audio streams from /api/resolve.',
   });
 };
 
