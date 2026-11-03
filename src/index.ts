@@ -84,7 +84,23 @@ server.get('/api/test-ytdlp', async (req: any) => {
     proc.stdout.on('data', d => out += d.toString());
     proc.stderr.on('data', d => err += d.toString());
     proc.on('close', code => {
-      resolve({ code, err, outLen: out.length, title: (() => { try { return JSON.parse(out).title; } catch { return null; } })() });
+      try {
+        const j = JSON.parse(out);
+        const fmts = (j.formats || []).map((f: any) => ({
+          format_id: f.format_id,
+          ext: f.ext,
+          protocol: f.protocol,
+          resolution: f.resolution,
+          height: f.height,
+          vcodec: f.vcodec,
+          acodec: f.acodec,
+          urlSample: f.url ? f.url.slice(0, 100) : null,
+          isM3u8: f.url ? f.url.includes('.m3u8') : false,
+        }));
+        resolve({ code, title: j.title, count: fmts.length, formats: fmts });
+      } catch (e: any) {
+        resolve({ code, err, parseError: e.message });
+      }
     });
   });
 });
