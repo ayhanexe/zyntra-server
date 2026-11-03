@@ -26,11 +26,11 @@ export async function resolveWithYtDlp(url: string, hostBaseUrl: string): Promis
 
   return new Promise((resolve, reject) => {
     const args = [
+      '--js-runtimes', 'node',
       '--dump-single-json',
       '--no-warnings',
       '--no-playlist',
       '--format', 'bestvideo+bestaudio/best',
-      '--extractor-args', 'youtube:player_client=android,ios;player_skip=webpage,configs',
       url,
     ];
 

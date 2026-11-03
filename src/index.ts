@@ -74,6 +74,7 @@ server.get('/api/test-ytdlp', async (req: any) => {
   const { spawn } = await import('child_process');
   return new Promise((resolve) => {
     const proc = spawn('yt-dlp', [
+      '--js-runtimes', 'node',
       '--dump-single-json',
       '--no-warnings',
       '--no-playlist',
@@ -111,6 +112,7 @@ server.get('/api/test-dl', async (req: any) => {
   const { spawn } = await import('child_process');
   return new Promise((resolve) => {
     const proc = spawn('yt-dlp', [
+      '--js-runtimes', 'node',
       '-f', format,
       '-o', '-',
       `https://www.youtube.com/watch?v=${videoId}`,
