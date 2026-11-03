@@ -259,11 +259,25 @@ export async function resolveYouTubeMedia(urlOrId: string, _hostBaseUrl?: string
         });
       }
 
-      // De-duplicate formats by height + ext (keeping highest bitrate)
+      // De-duplicate formats by height + ext (preferring progressive streams, then highest bitrate)
       const uniqueFormatsMap = new Map<string, FormatOption>();
       for (const f of videoFormats) {
         const key = `${f.height}_${f.fps || 30}_${f.ext}`;
-        if (!uniqueFormatsMap.has(key) || (f.filesize || 0) > (uniqueFormatsMap.get(key)!.filesize || 0)) {
+        const existing = uniqueFormatsMap.get(key);
+        if (!existing) {
+          uniqueFormatsMap.set(key, f);
+          continue;
+        }
+        // Progressive streams (isMuxed: true) must always take priority over adaptive streams,
+        // because progressive streams have no PO-token cutoff and download reliably on clients.
+        if (f.isMuxed && !existing.isMuxed) {
+          uniqueFormatsMap.set(key, f);
+          continue;
+        }
+        if (!f.isMuxed && existing.isMuxed) {
+          continue;
+        }
+        if ((f.filesize || 0) > (existing.filesize || 0)) {
           uniqueFormatsMap.set(key, f);
         }
       }
