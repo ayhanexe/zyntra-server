@@ -7,6 +7,7 @@ import { resolveTikTokMedia, isTikTokUrl } from './services/tiktok.js';
 import { resolveInstagramMedia, isInstagramUrl } from './services/instagram.js';
 import { resolveWithYtDlp, checkYtDlpAvailable } from './services/ytdlp.js';
 import { checkFfmpegAvailable } from './services/mp3.js';
+import { identifyMusic } from './services/musicRecognition.js';
 import { MediaResolutionResult } from './types/index.js';
 
 const server = Fastify({
@@ -240,6 +241,28 @@ server.get('/api/mp3', handleMp3Route);
 server.post('/api/mp3', handleMp3Route);
 server.get('/api/download/mp3', handleMp3Route);
 server.post('/api/download/mp3', handleMp3Route);
+
+// 6. Music Recognition & Audio Fingerprinting Endpoint
+server.post('/api/music/identify', async (req: any, reply: any) => {
+  const body = req.body || {};
+  const query = req.query || {};
+  const hostBaseUrl = getBaseUrl(req);
+
+  try {
+    const result = await identifyMusic({
+      tiktokUrl: body.tiktokUrl || query.tiktokUrl || body.url || query.url,
+      audioUrl: body.audioUrl || query.audioUrl,
+      videoUrl: body.videoUrl || query.videoUrl,
+      rawTitle: body.rawTitle || query.rawTitle,
+      rawAuthor: body.rawAuthor || query.rawAuthor,
+    }, hostBaseUrl);
+
+    return reply.send({ success: true, data: result });
+  } catch (e: any) {
+    server.log.error({ err: e?.message }, 'Music identification error');
+    return reply.status(500).send({ success: false, error: e?.message || 'Music identification failed' });
+  }
+});
 
 // Start the server
 const start = async () => {

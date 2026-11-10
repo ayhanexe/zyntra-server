@@ -46,3 +46,14 @@ export interface MediaResolutionResult {
   originalUrl: string;
   extractedAt: number;
 }
+
+export interface MusicIdentificationResult {
+  recognized: boolean;
+  title: string;
+  artist: string;
+  cleanQuery: string;
+  youtubeUrl: string;
+  youtubeVideoId?: string;
+  audioUrl?: string;
+  method: 'metadata' | 'matched_song' | 'audio_fingerprint' | 'youtube_search' | 'fallback';
+}
